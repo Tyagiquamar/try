@@ -3,6 +3,7 @@ import { getPostBySlug, getAllPosts } from "@/lib/mdx"
 import { notFound } from "next/navigation"
 import Image from "next/image"
 import { BookmarkButton } from "@/components/bookmark-button"
+import { users } from "@/lib/auth"
 
 export async function generateStaticParams() {
   const posts = await getAllPosts()
@@ -19,6 +20,8 @@ export default async function BlogPost({ params }: { params: { slug: string } })
     notFound()
   }
 
+  const author = users.find(u => u.id === post.authorId)
+
   return (
     <main className="min-h-screen flex flex-col">
       <Navbar />
@@ -26,7 +29,7 @@ export default async function BlogPost({ params }: { params: { slug: string } })
         <div className="mb-8">
           <div className="flex justify-between items-start mb-2">
             <div className="text-sm text-gray-500">
-              {post.category} • {post.readingTime}
+              {post.category} • {post.readingTime} • by {author?.name || "Unknown Author"}
             </div>
             <BookmarkButton post={post} />
           </div>
@@ -43,7 +46,6 @@ export default async function BlogPost({ params }: { params: { slug: string } })
           </div>
 
           <div className="prose max-w-none">
-            {/* Render markdown content as HTML */}
             <div
               dangerouslySetInnerHTML={{
                 __html: post.content
