@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import type { Post } from "@/lib/mdx"
 import { users } from "@/lib/auth"
 import { Input } from "./ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 
 interface BlogSearchProps {
   allPosts: Post[]
@@ -17,17 +16,11 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "")
-  const [authorFilter, setAuthorFilter] = useState<string>(searchParams.get("author") || "all")
+  const [authorFilter, setAuthorFilter] = useState(searchParams.get("author") || "")
   const [suggestions, setSuggestions] = useState<Post[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const searchTimeout = useRef<NodeJS.Timeout>()
-
-  // Get unique authors from posts
-  const authors = Array.from(new Set(allPosts.map(post => {
-    const author = users.find(u => u.id === post.authorId)
-    return author?.name || "Unknown Author"
-  }))).sort()
 
   // Update suggestions when search query changes with debouncing
   useEffect(() => {
@@ -75,45 +68,48 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
     }
   }, [])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // Create new URLSearchParams
+  const updateSearchParams = () => {
     const params = new URLSearchParams(searchParams)
 
-    // Set or remove the search query parameter
     if (searchQuery) {
       params.set("q", searchQuery)
     } else {
       params.delete("q")
     }
 
-    // Set or remove the author filter parameter
-    if (authorFilter && authorFilter !== "all") {
+    if (authorFilter) {
       params.set("author", authorFilter)
     } else {
       params.delete("author")
     }
 
-    // Navigate to the same page with updated search parameters
     router.push(`/?${params.toString()}`)
     setShowSuggestions(false)
   }
 
-  const handleAuthorChange = (value: string) => {
-    setAuthorFilter(value)
-    
-    // Update URL with new author filter
-    const params = new URLSearchParams(searchParams)
-    if (value && value !== "all") {
-      params.set("author", value)
-    } else {
-      params.delete("author")
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    updateSearchParams()
+  }
+
+  const handleAuthorFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAuthorFilter(e.target.value)
+    // Use debouncing for author filter updates
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current)
     }
-    if (searchQuery) {
-      params.set("q", searchQuery)
-    }
-    router.push(`/?${params.toString()}`)
+    searchTimeout.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams)
+      if (e.target.value) {
+        params.set("author", e.target.value)
+      } else {
+        params.delete("author")
+      }
+      if (searchQuery) {
+        params.set("q", searchQuery)
+      }
+      router.push(`/?${params.toString()}`)
+    }, 300)
   }
 
   const handleSuggestionClick = (slug: string) => {
@@ -137,19 +133,13 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
         </div>
 
         <div className="flex gap-4">
-          <Select value={authorFilter} onValueChange={handleAuthorChange}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by author" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Authors</SelectItem>
-              {authors.map((author) => (
-                <SelectItem key={author} value={author}>
-                  {author}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            type="text"
+            placeholder="Filter by author name"
+            value={authorFilter}
+            onChange={handleAuthorFilterChange}
+            className="w-full"
+          />
         </div>
 
         {/* Real-time search suggestions */}
