@@ -17,7 +17,7 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "")
-  const [authorFilter, setAuthorFilter] = useState(searchParams.get("author") || "")
+  const [authorFilter, setAuthorFilter] = useState<string | null>(searchParams.get("author") || null)
   const [suggestions, setSuggestions] = useState<Post[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -87,7 +87,7 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
     setShowSuggestions(false)
   }
 
-  const handleAuthorChange = (value: string) => {
+  const handleAuthorChange = (value: string | null) => {
     setAuthorFilter(value)
     
     // Update URL with new author filter
@@ -124,12 +124,12 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
         </div>
 
         <div className="flex gap-4">
-          <Select value={authorFilter} onValueChange={handleAuthorChange}>
+          <Select value={authorFilter || undefined} onValueChange={handleAuthorChange}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by author" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Authors</SelectItem>
+              <SelectItem value="all">All Authors</SelectItem>
               {authors.map((author) => (
                 <SelectItem key={author} value={author}>
                   {author}
