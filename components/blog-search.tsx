@@ -17,34 +17,47 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "")
-  const [authorFilter, setAuthorFilter] = useState<string | null>(searchParams.get("author") || null)
+  const [authorFilter, setAuthorFilter] = useState<string>(searchParams.get("author") || "all")
   const [suggestions, setSuggestions] = useState<Post[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
+  const searchTimeout = useRef<NodeJS.Timeout>()
 
   // Get unique authors from posts
   const authors = Array.from(new Set(allPosts.map(post => {
     const author = users.find(u => u.id === post.authorId)
     return author?.name || "Unknown Author"
-  })))
+  }))).sort()
 
-  // Update suggestions when search query changes
+  // Update suggestions when search query changes with debouncing
   useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      const query = searchQuery.toLowerCase()
-      const matchingPosts = allPosts
-        .filter(
-          (post) =>
-            post.title.toLowerCase().includes(query) ||
-            post.excerpt.toLowerCase().includes(query) ||
-            post.content.toLowerCase().includes(query)
-        )
-        .slice(0, 5) // Limit to 5 suggestions
-      setSuggestions(matchingPosts)
-      setShowSuggestions(true)
-    } else {
-      setSuggestions([])
-      setShowSuggestions(false)
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current)
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      if (searchQuery.trim().length > 0) {
+        const query = searchQuery.toLowerCase()
+        const matchingPosts = allPosts
+          .filter(
+            (post) =>
+              post.title.toLowerCase().includes(query) ||
+              post.excerpt.toLowerCase().includes(query) ||
+              post.content.toLowerCase().includes(query)
+          )
+          .slice(0, 5) // Limit to 5 suggestions
+        setSuggestions(matchingPosts)
+        setShowSuggestions(true)
+      } else {
+        setSuggestions([])
+        setShowSuggestions(false)
+      }
+    }, 300) // 300ms debounce
+
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current)
+      }
     }
   }, [searchQuery, allPosts])
 
@@ -76,7 +89,7 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
     }
 
     // Set or remove the author filter parameter
-    if (authorFilter) {
+    if (authorFilter && authorFilter !== "all") {
       params.set("author", authorFilter)
     } else {
       params.delete("author")
@@ -87,12 +100,12 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
     setShowSuggestions(false)
   }
 
-  const handleAuthorChange = (value: string | null) => {
+  const handleAuthorChange = (value: string) => {
     setAuthorFilter(value)
     
     // Update URL with new author filter
     const params = new URLSearchParams(searchParams)
-    if (value) {
+    if (value && value !== "all") {
       params.set("author", value)
     } else {
       params.delete("author")
@@ -124,7 +137,7 @@ export function BlogSearch({ allPosts }: BlogSearchProps) {
         </div>
 
         <div className="flex gap-4">
-          <Select value={authorFilter || undefined} onValueChange={handleAuthorChange}>
+          <Select value={authorFilter} onValueChange={handleAuthorChange}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by author" />
             </SelectTrigger>

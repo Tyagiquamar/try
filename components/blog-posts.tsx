@@ -18,15 +18,20 @@ function BlogPostsContent({ posts }: BlogPostsProps) {
   const searchQuery = searchParams.get("q")?.toLowerCase()
   const authorFilter = searchParams.get("author")?.toLowerCase()
 
+  // Sort posts by date (newest first)
+  const sortedPosts = [...posts].sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime()
+  })
+
   // Filter posts based on search query and author
-  const filteredPosts = posts.filter((post) => {
+  const filteredPosts = sortedPosts.filter((post) => {
     const matchesSearch = !searchQuery || 
       post.title.toLowerCase().includes(searchQuery) ||
       post.excerpt.toLowerCase().includes(searchQuery) ||
       post.content.toLowerCase().includes(searchQuery)
 
     const author = users.find(u => u.id === post.authorId)
-    const matchesAuthor = !authorFilter || 
+    const matchesAuthor = !authorFilter || authorFilter === "all" || 
       (author && author.name.toLowerCase().includes(authorFilter))
 
     return matchesSearch && matchesAuthor
